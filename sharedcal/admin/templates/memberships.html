@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Memberships{% endblock %}
+{% block content %}
+<h1>Memberships</h1>
+{% if not users or not calendars %}
+  <p class="muted">Create at least one user and one calendar first.</p>
+{% else %}
+<p class="muted">Tick <strong>member</strong> to give a user a calendar. Tick <strong>write</strong> as well to let them create events. Members can always read every event in the calendar, but can only change or delete the ones they created.</p>
+<form method="post" action="{{ url_for('save_memberships') }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr><th>User</th>{% for cal in calendars %}<th><span class="swatch" style="background: {{ cal.color }}"></span>{{ cal.name }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+    {% for user in users %}
+      <tr>
+        <td>{{ user.display_name }} <span class="muted">({{ user.username }})</span></td>
+        {% for cal in calendars %}
+          {% set m = current.get((user.id, cal.id)) %}
+          <td>
+            <label class="inline"><input type="checkbox" name="m_{{ user.id }}_{{ cal.id }}" {% if m %}checked{% endif %}> member</label>
+            <label class="inline"><input type="checkbox" name="w_{{ user.id }}_{{ cal.id }}" {% if m is none or m.can_write %}checked{% endif %}> write</label>
+          </td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <button>Save memberships</button>
+</form>
+{% endif %}
+{% endblock %}

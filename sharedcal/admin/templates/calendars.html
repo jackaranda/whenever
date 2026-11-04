@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Calendars{% endblock %}
+{% block content %}
+<h1>Calendars</h1>
+<div class="scroll">
+<table>
+  <thead><tr><th>Name</th><th>Slug</th><th>Members</th><th>Events</th><th>Timezone</th></tr></thead>
+  <tbody>
+  {% for cal in calendars %}
+    <tr>
+      <td><span class="swatch" style="background: {{ cal.color }}"></span><a href="{{ url_for('calendar_detail', calendar_id=cal.id) }}">{{ cal.name }}</a></td>
+      <td><code>{{ cal.slug }}</code></td>
+      <td>{{ member_counts.get(cal.id, 0) }}</td>
+      <td>{{ event_counts.get(cal.id, 0) }}</td>
+      <td>{{ cal.timezone }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">No calendars yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2>Add calendar</h2>
+<section class="card">
+  <form method="post" action="{{ url_for('create_calendar') }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" required>
+    <label for="slug">Slug <span class="muted">(used in URLs; generated from the name if empty)</span></label>
+    <input type="text" id="slug" name="slug" pattern="[a-z0-9][a-z0-9\-]{0,63}">
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2"></textarea>
+    <label for="color">Colour</label>
+    <input type="color" id="color" name="color" value="#3a87ad">
+    <label for="timezone">Timezone</label>
+    <input type="text" id="timezone" name="timezone" value="UTC" list="tz-list">
+    <datalist id="tz-list">{% for tz in timezones %}<option value="{{ tz }}">{% endfor %}</datalist>
+    <label class="inline"><input type="checkbox" name="prefix_titles" value="true"> Prefix event titles with the creator's name, e.g. "[Alice] Standup"</label>
+    <div><button>Create calendar</button></div>
+  </form>
+</section>
+{% endblock %}

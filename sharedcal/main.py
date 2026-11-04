@@ -1,0 +1,50 @@
+"""Application factory. Run with: uvicorn sharedcal.main:create_app --factory"""
+
+from __future__ import annotations
+
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import RedirectResponse
+from starlette.middleware.sessions import SessionMiddleware
+
+from .admin.routes import LoginRequired, login_required_handler
+from .admin.routes import router as admin_router
+from .config import Settings
+from .dav.routes import DAV_METHODS, dav_root
+from .dav.routes import router as dav_router
+from .db import make_engine, make_sessionmaker
+from .feeds import router as feed_router
+from .models import Base
+
+
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings or Settings.from_env()
+    engine = make_engine(settings.database_url)
+    Base.metadata.create_all(engine)
+
+    app = FastAPI(title="sharedcal", docs_url=None, redoc_url=None, openapi_url=None)
+    app.state.settings = settings
+    app.state.engine = engine
+    app.state.sessionmaker = make_sessionmaker(engine)
+
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.secret_key,
+        session_cookie="sharedcal_session",
+        max_age=8 * 3600,
+        same_site="strict",
+        https_only=settings.cookie_secure,
+    )
+    app.add_exception_handler(LoginRequired, login_required_handler)
+
+    app.include_router(dav_router)
+    app.include_router(feed_router)
+    app.include_router(admin_router)
+
+    @app.api_route("/", methods=DAV_METHODS, include_in_schema=False)
+    async def root(request: Request) -> Response:
+        # Some clients PROPFIND the server root when given only a hostname.
+        if request.method in {"GET", "HEAD"}:
+            return RedirectResponse("/admin/", status_code=303)
+        return await dav_root(request)
+
+    return app

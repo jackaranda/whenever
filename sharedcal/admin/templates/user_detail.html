@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('users') }}">← Users</a></p>
+<h1>{{ user.display_name }} <span class="muted">({{ user.username }})</span></h1>
+
+<h2>Connection details</h2>
+<section class="card">
+  <p class="muted">Send these to {{ user.display_name }}. Each URL contains their personal token, so treat it like a password.</p>
+  <dl class="urls">
+    <dt>CalDAV with a username and password (Apple Calendar, DAVx5, Thunderbird, Evolution)</dt>
+    <dd>Server: <span class="url">{{ base }}/dav/u/{{ user.username }}/</span></dd>
+    <dd>Username: <code>{{ user.username }}</code> · Password: {% if user.password_hash %}their account password, or the token below{% else %}the token below{% endif %}</dd>
+    <dd>Token: <span class="url">{{ user.token }}</span></dd>
+    {% if allow_token_urls %}
+    <dt>CalDAV without credentials (the token in the URL identifies the user)</dt>
+    <dd><span class="url">{{ base }}/dav/t/{{ user.token }}/</span></dd>
+    {% for m, cal in memberships %}
+    <dd>{{ cal.name }}: <span class="url">{{ base }}/dav/t/{{ user.token }}/{{ cal.slug }}/</span></dd>
+    {% endfor %}
+    {% endif %}
+    <dt>Read-only ICS subscriptions (Google Calendar, Outlook)</dt>
+    {% for m, cal in memberships %}
+    <dd>{{ cal.name }}: <span class="url">{{ base }}/feed/{{ user.token }}/{{ cal.slug }}.ics</span></dd>
+    {% else %}
+    <dd class="muted">Not a member of any calendar yet. <a href="{{ url_for('memberships') }}">Assign calendars</a>.</dd>
+    {% endfor %}
+  </dl>
+  <form method="post" action="{{ url_for('rotate_token', user_id=user.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="secondary">Issue new token (the old URLs stop working)</button>
+  </form>
+</section>
+
+<h2>Calendars</h2>
+<section class="card">
+  {% for m, cal in memberships %}
+    <div><span class="swatch" style="background: {{ cal.color }}"></span><a href="{{ url_for('calendar_detail', calendar_id=cal.id) }}">{{ cal.name }}</a>
+      {% if m.can_write %}<span class="badge">read/write</span>{% else %}<span class="badge off">read only</span>{% endif %}</div>
+  {% else %}
+    <p class="muted">None.</p>
+  {% endfor %}
+  <p><a href="{{ url_for('memberships') }}">Edit memberships</a></p>
+</section>
+
+<h2>Profile</h2>
+<section class="card">
+  <form method="post" action="{{ url_for('update_user', user_id=user.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="display_name">Display name</label>
+    <input type="text" id="display_name" name="display_name" value="{{ user.display_name }}">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" value="{{ user.email }}">
+    <label class="inline"><input type="checkbox" name="is_admin" value="true" {% if user.is_admin %}checked{% endif %}> Admin</label>
+    <label class="inline"><input type="checkbox" name="active" value="true" {% if user.active %}checked{% endif %}> Active</label>
+    <div><button>Save</button></div>
+  </form>
+</section>
+
+<h2>Password</h2>
+<section class="card">
+  <form method="post" action="{{ url_for('set_password', user_id=user.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="password">New password <span class="muted">(leave empty to remove the password)</span></label>
+    <input type="password" id="password" name="password" autocomplete="new-password">
+    <div><button>Set password</button></div>
+  </form>
+</section>
+
+{% if user.id != admin.id %}
+<h2>Delete user</h2>
+<section class="card">
+  <form method="post" action="{{ url_for('delete_user', user_id=user.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <p>{{ user.display_name }} created {{ event_count }} event{{ '' if event_count == 1 else 's' }}. What should happen to them?</p>
+    <label class="inline"><input type="radio" name="events" value="reassign" checked> Give them to</label>
+    <select name="reassign_to" style="max-width:14rem">
+      {% for other in others %}<option value="{{ other.id }}">{{ other.display_name }} ({{ other.username }})</option>{% endfor %}
+    </select>
+    <div><label class="inline"><input type="radio" name="events" value="orphan"> Keep them, shown as "(deleted user)"</label></div>
+    <div><label class="inline"><input type="radio" name="events" value="delete"> Delete them</label></div>
+    <div><button class="danger">Delete {{ user.username }}</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

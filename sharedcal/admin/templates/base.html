@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}sharedcal{% endblock %} · sharedcal admin</title>
+<style>
+  :root { --fg:#1d2330; --muted:#5d6675; --line:#d8dce3; --bg:#f6f7f9; --card:#fff; --accent:#2f6fb0; --err:#b3261e; --ok:#1e7a3c; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--fg); background:var(--bg); }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:.6rem 1rem; display:flex; gap:1.25rem; align-items:center; flex-wrap:wrap; }
+  header .brand { font-weight:600; }
+  header nav { display:flex; gap:1rem; flex:1; }
+  header form { margin:0; }
+  main { max-width:960px; margin:0 auto; padding:1.25rem 1rem 3rem; }
+  a { color:var(--accent); }
+  h1 { font-size:1.4rem; margin:.25rem 0 1rem; }
+  h2 { font-size:1.1rem; margin:1.75rem 0 .5rem; }
+  section.card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:1rem; margin-bottom:1rem; }
+  table { border-collapse:collapse; width:100%; background:var(--card); }
+  th, td { text-align:left; padding:.4rem .6rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-weight:600; color:var(--muted); font-size:.85rem; }
+  .scroll { overflow-x:auto; }
+  label { display:block; margin:.5rem 0 .15rem; font-weight:500; }
+  label.inline { display:inline-flex; gap:.35rem; align-items:center; font-weight:normal; margin-right:1rem; }
+  input[type=text], input[type=password], input[type=email], textarea, select { width:100%; max-width:28rem; padding:.4rem .5rem; border:1px solid var(--line); border-radius:4px; font:inherit; }
+  input[type=color] { width:3rem; height:2rem; padding:0; border:1px solid var(--line); }
+  button { font:inherit; padding:.4rem .9rem; border-radius:4px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; margin-top:.6rem; }
+  button.secondary { background:#fff; color:var(--accent); }
+  button.danger { background:var(--err); border-color:var(--err); }
+  button.link { background:none; border:none; color:var(--accent); padding:0; margin:0; text-decoration:underline; }
+  .msg { padding:.5rem .75rem; border-radius:4px; margin-bottom:.75rem; border:1px solid; }
+  .msg.ok { color:var(--ok); border-color:var(--ok); background:#eef8f1; }
+  .msg.error { color:var(--err); border-color:var(--err); background:#fdf0ef; }
+  .muted { color:var(--muted); }
+  code, .url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.85rem; word-break:break-all; }
+  .swatch { display:inline-block; width:.9rem; height:.9rem; border-radius:3px; vertical-align:middle; margin-right:.3rem; border:1px solid rgba(0,0,0,.15); }
+  .badge { display:inline-block; font-size:.75rem; padding:0 .4rem; border-radius:3px; background:#e7edf5; color:var(--accent); margin-left:.3rem; }
+  .badge.off { background:#eee; color:var(--muted); }
+  dl.urls dt { font-weight:600; margin-top:.75rem; }
+  dl.urls dd { margin:.15rem 0 0; }
+</style>
+</head>
+<body>
+{% if admin %}
+<header>
+  <span class="brand">sharedcal</span>
+  <nav>
+    <a href="{{ url_for('users') }}">Users</a>
+    <a href="{{ url_for('calendars') }}">Calendars</a>
+    <a href="{{ url_for('memberships') }}">Memberships</a>
+  </nav>
+  <span class="muted">{{ admin.display_name }}</span>
+  <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Log out</button></form>
+</header>
+{% endif %}
+<main>
+  {% for kind, text in messages %}<div class="msg {{ kind }}">{{ text }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

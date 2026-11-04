@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<h1>Users</h1>
+<div class="scroll">
+<table>
+  <thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Calendars</th><th></th></tr></thead>
+  <tbody>
+  {% for user, count in rows %}
+    <tr>
+      <td><a href="{{ url_for('user_detail', user_id=user.id) }}">{{ user.username }}</a></td>
+      <td>{{ user.display_name }}</td>
+      <td>{{ user.email }}</td>
+      <td>{{ count }}</td>
+      <td>
+        {% if user.is_admin %}<span class="badge">admin</span>{% endif %}
+        {% if not user.active %}<span class="badge off">inactive</span>{% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">No users yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2>Add user</h2>
+<section class="card">
+  <form method="post" action="{{ url_for('create_user') }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" required pattern="[a-z0-9][a-z0-9._\-]{0,63}" title="lowercase letters, digits, . _ -">
+    <label for="display_name">Display name <span class="muted">(shown on the events they create)</span></label>
+    <input type="text" id="display_name" name="display_name">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email">
+    <label for="password">Password <span class="muted">(optional; without one, the user signs in to calendar clients with their token)</span></label>
+    <input type="password" id="password" name="password" autocomplete="new-password">
+    <label class="inline"><input type="checkbox" name="is_admin" value="true"> Admin</label>
+    <div><button>Create user</button></div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ cal.name }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('calendars') }}">← Calendars</a></p>
+<h1><span class="swatch" style="background: {{ cal.color }}"></span>{{ cal.name }} <span class="muted">({{ cal.slug }})</span></h1>
+<p class="muted">{{ event_count }} event{{ '' if event_count == 1 else 's' }}.</p>
+
+<h2>Members</h2>
+<section class="card">
+  {% for m, user in members %}
+    <div><a href="{{ url_for('user_detail', user_id=user.id) }}">{{ user.display_name }}</a> <span class="muted">({{ user.username }})</span>
+      {% if m.can_write %}<span class="badge">read/write</span>{% else %}<span class="badge off">read only</span>{% endif %}</div>
+  {% else %}
+    <p class="muted">No members yet.</p>
+  {% endfor %}
+  <p><a href="{{ url_for('memberships') }}">Edit memberships</a></p>
+</section>
+
+<h2>Settings</h2>
+<section class="card">
+  <form method="post" action="{{ url_for('update_calendar', calendar_id=cal.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" value="{{ cal.name }}" required>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" rows="2">{{ cal.description }}</textarea>
+    <label for="color">Colour</label>
+    <input type="color" id="color" name="color" value="{{ cal.color }}">
+    <label for="timezone">Timezone</label>
+    <input type="text" id="timezone" name="timezone" value="{{ cal.timezone }}" list="tz-list">
+    <datalist id="tz-list">{% for tz in timezones %}<option value="{{ tz }}">{% endfor %}</datalist>
+    <label class="inline"><input type="checkbox" name="prefix_titles" value="true" {% if cal.prefix_titles %}checked{% endif %}> Prefix event titles with the creator's name</label>
+    <div><button>Save</button></div>
+  </form>
+</section>
+
+<h2>Delete calendar</h2>
+<section class="card">
+  <form method="post" action="{{ url_for('delete_calendar', calendar_id=cal.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <p>This permanently deletes the calendar and all {{ event_count }} of its events. Type <code>{{ cal.slug }}</code> to confirm.</p>
+    <input type="text" name="confirm" autocomplete="off">
+    <div><button class="danger">Delete calendar</button></div>
+  </form>
+</section>
+{% endblock %}
