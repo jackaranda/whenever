@@ -11,12 +11,14 @@ import hashlib
 from collections.abc import Iterable
 
 from icalendar import Calendar as ICalendar
-from sqlalchemy import delete, select, update
+from datetime import datetime
+
+from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from . import ical
 from .ical import ParsedEvent
-from .models import Calendar, Event, EventTombstone, User, utcnow
+from .models import Calendar, Event, EventTombstone, Membership, User, utcnow
 
 DELETED_OWNER = "(deleted user)"
 
@@ -101,3 +103,24 @@ def refresh_events(db: Session, events: Iterable[Event]) -> None:
 
 def events_owned_by(db: Session, user: User) -> list[Event]:
     return list(db.scalars(select(Event).where(Event.owner_id == user.id)))
+
+
+def can_modify(user: User, membership: Membership, ev: Event) -> bool:
+    """Only the creator, or an admin, may change an event, and only with write access to the calendar."""
+    return membership.can_write and (ev.owner_id == user.id or user.is_admin)
+
+
+def time_range_condition(start: datetime | None, end: datetime | None):
+    """SQL condition for events that may overlap [start, end), both naive UTC.
+
+    Recurring events and events without a usable start always match; callers
+    expand or filter those themselves.
+    """
+    conditions = []
+    if end is not None:
+        conditions.append(Event.dtstart_utc < end)
+    if start is not None:
+        conditions.append(or_(Event.dtend_utc > start, Event.dtstart_utc >= start))
+    if not conditions:
+        return None
+    return or_(Event.is_recurring, Event.dtstart_utc.is_(None), and_(*conditions))

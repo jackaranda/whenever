@@ -13,6 +13,8 @@
     <dd>Username: <code>{{ user.username }}</code> · Password: {% if user.password_hash %}their account password, or the token below{% else %}the token below{% endif %}</dd>
     <dd>Token: <span class="url">{{ user.token }}</span></dd>
     {% if allow_token_urls %}
+    <dt>Web calendar (view and add events in a browser; for Outlook users and anyone without a CalDAV app)</dt>
+    <dd><a class="url" href="{{ base }}/cal/{{ user.token }}/" rel="noreferrer">{{ base }}/cal/{{ user.token }}/</a></dd>
     <dt>CalDAV without credentials (the token in the URL identifies the user)</dt>
     <dd><span class="url">{{ base }}/dav/t/{{ user.token }}/</span></dd>
     {% for m, cal in memberships %}

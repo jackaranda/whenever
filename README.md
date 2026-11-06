@@ -4,6 +4,7 @@ Shared calendars that several people use from their own calendar apps. Each pers
 
 - **CalDAV** for clients that can write (Apple Calendar, Thunderbird, DAVx5 on Android, Evolution).
 - **Read-only ICS feeds** for clients that can only subscribe (Google Calendar, Outlook).
+- **A web calendar** where each user can view, add and edit events in a browser (month, week, day and list views, repeating events). This is how Outlook users add events.
 - **A simple admin web interface** for users, calendars and memberships.
 
 FastAPI + SQLAlchemy + SQLite. No external services.
@@ -40,6 +41,7 @@ Run the tests with `.venv/bin/pytest`.
 | CalDAV account (server address) | `https://host/` or `https://host/dav/u/{username}/` | Basic: username + password **or** token |
 | CalDAV without credentials | `https://host/dav/t/{token}/` (or `…/{token}/{calendar}/`) | token in the path |
 | Read-only subscription | `https://host/feed/{token}/{calendar}.ics` | token in the path |
+| Web calendar | `https://host/cal/{token}/` | token in the path |
 | Admin | `https://host/admin/` | admin username + password |
 
 `/.well-known/caldav` redirects to `/dav/`, so clients that discover the server automatically (Apple, DAVx5) only need the hostname.
@@ -49,7 +51,8 @@ Run the tests with `.venv/bin/pytest`.
 - **Apple Calendar / iOS:** add a CalDAV account with the server set to the hostname, plus the username and password (or the token as the password).
 - **Thunderbird:** go to New Calendar → On the Network, and paste the per-calendar token URL. It won't ask for credentials.
 - **DAVx5 (Android):** log in with a URL and username, using `https://host/` and the username with the password or token.
-- **Google Calendar / Outlook:** add a calendar from a URL with the `.ics` feed. It is read-only, and Google refreshes it slowly (often every 12–24 hours).
+- **Google Calendar / Outlook:** add a calendar from a URL with the `.ics` feed. It is read-only, and Google refreshes it slowly (often every 12–24 hours). To add or change events, use the web calendar.
+- **Outlook can't use CalDAV.** No version of Outlook supports it, so giving Outlook a `/dav/…` URL just gives a read-only copy of the calendar. On classic Outlook for Windows, the free [CalDav Synchronizer](https://caldavsynchronizer.org/) add-in can sync with the CalDAV URL in both directions; otherwise use the web calendar.
 
 ## Configuration (environment variables)
 
@@ -60,7 +63,7 @@ Run the tests with `.venv/bin/pytest`.
 | `WHENEVER_SECRET_KEY` | generated | Signs the admin session cookie |
 | `WHENEVER_BASE_URL` | request URL | Public URL used in the connection details the admin UI shows; include any sub-path |
 | `WHENEVER_ROOT_PATH` | empty | URL prefix when served from a sub-path, e.g. `/whenever` |
-| `WHENEVER_ALLOW_TOKEN_URLS` | `true` | Set to `false` to require Basic auth for CalDAV |
+| `WHENEVER_ALLOW_TOKEN_URLS` | `true` | Set to `false` to require Basic auth for CalDAV. This also turns off the web calendar, which is token-based |
 | `WHENEVER_COOKIE_SECURE` | `false` | Set to `true` behind HTTPS |
 | `WHENEVER_MAX_EVENT_SIZE` | `262144` | Largest accepted event, in bytes |
 | `WHENEVER_FEED_REFRESH_MINUTES` | `15` | Refresh interval suggested in ICS feeds |
@@ -78,8 +81,23 @@ whenever/
   feeds.py        /feed/{token}/{slug}.ics
   dav/            CalDAV: PROPFIND, REPORT (multiget, query, sync-collection), GET, PUT, DELETE
   admin/          admin routes and Jinja templates
+  web/            web calendar: page, JSON API, recurrence editing, static files (FullCalendar 6.1.15, MIT)
 tests/            pytest suite, including an end-to-end run with the `caldav` client library
 ```
+
+## Web calendar
+
+Each user's web calendar is at `/cal/{token}/`; the link is on their page in the admin UI. It shows every calendar they belong to, with a show/hide toggle per calendar.
+
+- **Adding events:** click or drag across days or times, or use **New event**. Events are created in the browser's timezone.
+- **Editing:** click an event to see its details. Only the creator (or an admin) can edit or delete it, and only in calendars where they have write access. Single events can also be dragged or resized.
+- **Repeating events:** daily, weekly (on chosen weekdays), monthly (on a day of the month, or e.g. the second Tuesday) or yearly, every *N* periods, ending never, on a date or after a number of times. For one occurrence you can change or delete just that occurrence, or the whole series. Changing the time or pattern of the whole series removes changes made to single occurrences; the editor warns about this first.
+- **Custom repeat rules** made in other apps (e.g. "last weekday of the month") are shown as text and kept unchanged when the event is edited. Choosing a different pattern replaces them.
+- **Shared with every client:** changes go through the same storage as CalDAV, so Thunderbird, Apple Calendar and the feeds see them at their next sync. Subscribed calendars (Outlook, Google) see them when they next refresh the feed, which can take hours.
+
+The page loads FullCalendar from the app itself, not a CDN, and sends `Referrer-Policy: no-referrer` and a strict Content-Security-Policy. The page URL contains the user's token, so no other site ever sees it.
+
+Not supported yet: "this and following occurrences" edits, inviting attendees, and reminders.
 
 ## Supported CalDAV features
 

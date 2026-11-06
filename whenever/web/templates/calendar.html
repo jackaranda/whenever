@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Calendar · whenever</title>
+<link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', path='calendar.css') }}">
+<script id="config" type="application/json">{{ config | tojson }}</script>
+<script src="{{ url_for('static', path='fullcalendar/index.global.min.js') }}" defer></script>
+<script src="{{ url_for('static', path='calendar.js') }}" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">whenever</span>
+  <span class="who">{{ user.display_name or user.username }}</span>
+  <button type="button" id="new-event" class="primary">+ New event</button>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h2>Calendars</h2>
+    <ul id="calendar-list"></ul>
+    <p class="note">Events you add here are shared with everyone in the calendar. Outlook and other
+      subscribed calendars pick up changes the next time they refresh, which can take a few hours.</p>
+  </aside>
+  <main>
+    <div id="calendar"></div>
+  </main>
+</div>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- Event details -->
+<dialog id="details" aria-labelledby="details-title">
+  <div class="dialog-head">
+    <span class="swatch" id="details-color"></span>
+    <h2 id="details-title"></h2>
+  </div>
+  <dl class="facts">
+    <dt>When</dt><dd id="details-when"></dd>
+    <dt class="opt-repeat">Repeats</dt><dd class="opt-repeat" id="details-repeat"></dd>
+    <dt class="opt-location">Where</dt><dd class="opt-location" id="details-location"></dd>
+    <dt>Calendar</dt><dd id="details-calendar"></dd>
+    <dt>Created by</dt><dd id="details-owner"></dd>
+  </dl>
+  <p id="details-description" class="description"></p>
+  <div class="actions">
+    <button type="button" id="details-delete" class="danger">Delete</button>
+    <span class="spacer"></span>
+    <button type="button" id="details-close">Close</button>
+    <button type="button" id="details-edit" class="primary">Edit</button>
+  </div>
+</dialog>
+
+<!-- Create / edit -->
+<dialog id="editor" aria-labelledby="editor-title">
+  <form id="editor-form" novalidate>
+    <h2 id="editor-title">New event</h2>
+
+    <fieldset id="scope-row" class="row scope">
+      <legend>Change</legend>
+      <label class="inline"><input type="radio" name="scope" value="this" checked> This occurrence</label>
+      <label class="inline"><input type="radio" name="scope" value="all"> All occurrences</label>
+    </fieldset>
+
+    <label for="f-title">Title</label>
+    <input type="text" id="f-title" maxlength="500" required autocomplete="off">
+
+    <div id="calendar-row">
+      <label for="f-calendar">Calendar</label>
+      <select id="f-calendar"></select>
+    </div>
+
+    <label class="inline"><input type="checkbox" id="f-allday"> All day</label>
+
+    <div class="when">
+      <div>
+        <label for="f-start-date">Starts</label>
+        <div class="pair"><input type="date" id="f-start-date" required><input type="time" id="f-start-time" class="time" step="300"></div>
+      </div>
+      <div>
+        <label for="f-end-date">Ends</label>
+        <div class="pair"><input type="date" id="f-end-date" required><input type="time" id="f-end-time" class="time" step="300"></div>
+      </div>
+    </div>
+
+    <div id="repeat-section">
+      <label for="f-repeat">Repeat</label>
+      <select id="f-repeat">
+        <option value="">Does not repeat</option>
+        <option value="DAILY">Daily</option>
+        <option value="WEEKLY">Weekly</option>
+        <option value="MONTHLY">Monthly</option>
+        <option value="YEARLY">Yearly</option>
+        <option value="CUSTOM" id="opt-custom" hidden>Custom (keep as is)</option>
+      </select>
+      <p id="custom-text" class="note" hidden></p>
+
+      <div id="repeat-details" class="repeat-details" hidden>
+        <div class="row">
+          <label for="f-interval" class="inline">Every</label>
+          <input type="number" id="f-interval" min="1" max="999" value="1" class="small">
+          <span id="interval-unit">weeks</span>
+        </div>
+        <fieldset id="weekly-row" class="row">
+          <legend>On</legend>
+          <div class="weekdays" id="f-weekdays"></div>
+        </fieldset>
+        <fieldset id="monthly-row" class="row">
+          <legend>On</legend>
+          <div id="f-monthly"></div>
+        </fieldset>
+        <fieldset class="row">
+          <legend>Ends</legend>
+          <label class="inline"><input type="radio" name="ends" value="never" checked> Never</label>
+          <label class="inline"><input type="radio" name="ends" value="until"> On
+            <input type="date" id="f-until"></label>
+          <label class="inline"><input type="radio" name="ends" value="count"> After
+            <input type="number" id="f-count" min="1" max="1000" value="10" class="small"> times</label>
+        </fieldset>
+      </div>
+      <p id="exceptions-warning" class="warning" hidden>Changing the time or repeat pattern of the whole series
+        removes any changes made to individual occurrences.</p>
+    </div>
+
+    <label for="f-location">Location</label>
+    <input type="text" id="f-location" maxlength="500" autocomplete="off">
+
+    <label for="f-description">Description</label>
+    <textarea id="f-description" rows="3" maxlength="10000"></textarea>
+
+    <p id="editor-error" class="error" role="alert" hidden></p>
+
+    <div class="actions">
+      <span class="spacer"></span>
+      <button type="button" id="editor-cancel">Cancel</button>
+      <button type="submit" id="editor-save" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Delete confirmation -->
+<dialog id="confirm" aria-labelledby="confirm-title">
+  <h2 id="confirm-title">Delete event?</h2>
+  <p id="confirm-text"></p>
+  <div class="actions">
+    <span class="spacer"></span>
+    <button type="button" id="confirm-cancel">Cancel</button>
+    <button type="button" id="confirm-this" class="danger">Delete this occurrence</button>
+    <button type="button" id="confirm-all" class="danger">Delete</button>
+  </div>
+</dialog>
+</body>
+</html>

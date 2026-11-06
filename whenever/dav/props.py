@@ -69,7 +69,7 @@ class DavContext:
         return (row[0], row[1]) if row else None
 
     def can_modify(self, membership: Membership, ev: Event) -> bool:
-        return membership.can_write and (ev.owner_id == self.user.id or self.user.is_admin)
+        return store.can_modify(self.user, membership, ev)
 
 
 def sync_token(cal: Calendar) -> str:

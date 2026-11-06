@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from .admin.routes import LoginRequired, login_required_handler
@@ -14,6 +17,10 @@ from .dav.routes import router as dav_router
 from .db import make_engine, make_sessionmaker
 from .feeds import router as feed_router
 from .models import Base
+from .web.routes import router as web_router
+
+
+STATIC_DIR = Path(__file__).parent / "web" / "static"
 
 
 class RootPathMiddleware:
@@ -66,6 +73,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(dav_router)
     app.include_router(feed_router)
     app.include_router(admin_router)
+    app.include_router(web_router)
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.api_route("/", methods=DAV_METHODS, include_in_schema=False)
     async def root(request: Request) -> Response:

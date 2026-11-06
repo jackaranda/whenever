@@ -14,7 +14,7 @@ from email.utils import format_datetime
 from urllib.parse import quote, unquote, urlparse
 
 from fastapi import APIRouter, Request, Response
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
@@ -344,13 +344,9 @@ def _query_events(ctx: DavContext, cal: Calendar, root: ET.Element) -> list[Even
         if time_range is not None:
             start = _parse_ical_utc(time_range.get("start"))
             end = _parse_ical_utc(time_range.get("end"))
-            conditions = []
-            if end is not None:
-                conditions.append(Event.dtstart_utc < end)
-            if start is not None:
-                conditions.append(or_(Event.dtend_utc > start, Event.dtstart_utc >= start))
-            if conditions:
-                stmt = stmt.where(or_(Event.is_recurring, Event.dtstart_utc.is_(None), and_(*conditions)))
+            condition = store.time_range_condition(start, end)
+            if condition is not None:
+                stmt = stmt.where(condition)
         for prop_filter in comp.findall(c("prop-filter")):
             text_match = prop_filter.find(c("text-match"))
             if prop_filter.get("name", "").upper() != "UID" or text_match is None or not text_match.text:
