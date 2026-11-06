@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}sharedcal{% endblock %} · sharedcal admin</title>
+<title>{% block title %}whenever{% endblock %} · whenever admin</title>
 <style>
   :root { --fg:#1d2330; --muted:#5d6675; --line:#d8dce3; --bg:#f6f7f9; --card:#fff; --accent:#2f6fb0; --err:#b3261e; --ok:#1e7a3c; }
   * { box-sizing: border-box; }
@@ -44,7 +44,7 @@
 <body>
 {% if admin %}
 <header>
-  <span class="brand">sharedcal</span>
+  <span class="brand">whenever</span>
   <nav>
     <a href="{{ url_for('users') }}">Users</a>
     <a href="{{ url_for('calendars') }}">Calendars</a>

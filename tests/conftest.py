@@ -10,10 +10,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from sharedcal.config import Settings  # noqa: E402
-from sharedcal.main import create_app  # noqa: E402
-from sharedcal.models import Calendar, Membership, User  # noqa: E402
-from sharedcal.security import hash_password  # noqa: E402
+from whenever.config import Settings  # noqa: E402
+from whenever.main import create_app  # noqa: E402
+from whenever.models import Calendar, Membership, User  # noqa: E402
+from whenever.security import hash_password  # noqa: E402
 
 
 @dataclass

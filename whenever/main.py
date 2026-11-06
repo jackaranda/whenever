@@ -1,4 +1,4 @@
-"""Application factory. Run with: uvicorn sharedcal.main:create_app --factory"""
+"""Application factory. Run with: uvicorn whenever.main:create_app --factory"""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     engine = make_engine(settings.database_url)
     Base.metadata.create_all(engine)
 
-    app = FastAPI(title="sharedcal", docs_url=None, redoc_url=None, openapi_url=None)
+    app = FastAPI(title="whenever", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.engine = engine
     app.state.sessionmaker = make_sessionmaker(engine)
@@ -29,7 +29,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.secret_key,
-        session_cookie="sharedcal_session",
+        session_cookie="whenever_session",
         max_age=8 * 3600,
         same_site="strict",
         https_only=settings.cookie_secure,

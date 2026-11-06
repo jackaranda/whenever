@@ -2,7 +2,7 @@ import re
 
 from sqlalchemy import select
 
-from sharedcal.models import Calendar, Event, Membership, User
+from whenever.models import Calendar, Event, Membership, User
 
 from .conftest import basic, make_ics
 

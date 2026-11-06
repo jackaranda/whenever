@@ -22,7 +22,7 @@ def test_other_writer_cannot_modify_but_admin_can(client, seed):
     client.put("/dav/u/bob/team/e1.ics", headers=B, content=make_ics("e1"))
     # make alice a non-admin writer first
     with client.app.state.sessionmaker() as db:
-        from sharedcal.models import User
+        from whenever.models import User
         db.get(User, seed.alice.id).is_admin = False
         db.commit()
     assert client.put("/dav/u/alice/team/e1.ics", headers=A, content=make_ics("e1", summary="X")).status_code == 403
@@ -33,7 +33,7 @@ def test_other_writer_cannot_modify_but_admin_can(client, seed):
         db.commit()
     assert client.put("/dav/u/alice/team/e1.ics", headers=A, content=make_ics("e1", summary="X")).status_code == 204
     # the event still belongs to bob after the admin edit
-    assert b"X-SHAREDCAL-OWNER:bob" in client.get("/dav/u/alice/team/e1.ics", headers=A).content
+    assert b"X-WHENEVER-OWNER:bob" in client.get("/dav/u/alice/team/e1.ics", headers=A).content
     assert client.delete("/dav/u/alice/team/e1.ics", headers=A).status_code == 204
 
 

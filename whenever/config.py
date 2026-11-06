@@ -1,4 +1,4 @@
-"""Settings, read from SHAREDCAL_* environment variables."""
+"""Settings, read from WHENEVER_* environment variables."""
 
 from __future__ import annotations
 
@@ -32,18 +32,18 @@ class Settings:
 
     @classmethod
     def from_env(cls, **overrides) -> "Settings":
-        data_dir = Path(overrides.pop("data_dir", None) or os.environ.get("SHAREDCAL_DATA_DIR", "./data"))
+        data_dir = Path(overrides.pop("data_dir", None) or os.environ.get("WHENEVER_DATA_DIR", "./data"))
         data_dir.mkdir(parents=True, exist_ok=True)
-        database_url = os.environ.get("SHAREDCAL_DATABASE_URL") or f"sqlite:///{data_dir / 'sharedcal.db'}"
+        database_url = os.environ.get("WHENEVER_DATABASE_URL") or f"sqlite:///{data_dir / 'whenever.db'}"
         settings = cls(
             data_dir=data_dir,
             database_url=database_url,
-            secret_key=os.environ.get("SHAREDCAL_SECRET_KEY") or _load_or_create_secret(data_dir),
-            base_url=os.environ.get("SHAREDCAL_BASE_URL", "").rstrip("/"),
-            allow_token_urls=_env_bool("SHAREDCAL_ALLOW_TOKEN_URLS", True),
-            cookie_secure=_env_bool("SHAREDCAL_COOKIE_SECURE", False),
-            max_event_size=int(os.environ.get("SHAREDCAL_MAX_EVENT_SIZE", 256 * 1024)),
-            feed_refresh_minutes=int(os.environ.get("SHAREDCAL_FEED_REFRESH_MINUTES", 15)),
+            secret_key=os.environ.get("WHENEVER_SECRET_KEY") or _load_or_create_secret(data_dir),
+            base_url=os.environ.get("WHENEVER_BASE_URL", "").rstrip("/"),
+            allow_token_urls=_env_bool("WHENEVER_ALLOW_TOKEN_URLS", True),
+            cookie_secure=_env_bool("WHENEVER_COOKIE_SECURE", False),
+            max_event_size=int(os.environ.get("WHENEVER_MAX_EVENT_SIZE", 256 * 1024)),
+            feed_refresh_minutes=int(os.environ.get("WHENEVER_FEED_REFRESH_MINUTES", 15)),
         )
         for key, value in overrides.items():
             setattr(settings, key, value)

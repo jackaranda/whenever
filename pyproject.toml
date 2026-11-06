@@ -1,5 +1,5 @@
 [project]
-name = "sharedcal"
+name = "whenever"
 version = "0.1.0"
 description = "Shared calendars with per-user CalDAV and ICS access"
 requires-python = ">=3.11"
@@ -21,10 +21,10 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["sharedcal*"]
+include = ["whenever*"]
 
 [tool.setuptools.package-data]
-sharedcal = ["admin/templates/*.html"]
+whenever = ["admin/templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

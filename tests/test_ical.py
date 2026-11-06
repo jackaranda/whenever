@@ -1,7 +1,7 @@
 import pytest
 from icalendar import Calendar
 
-from sharedcal import ical
+from whenever import ical
 
 from .conftest import make_ics
 

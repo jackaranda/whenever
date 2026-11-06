@@ -52,7 +52,7 @@ def _unauthorized() -> Response:
     return Response(
         "Authentication required",
         status_code=401,
-        headers={"WWW-Authenticate": 'Basic realm="sharedcal", charset="UTF-8"'},
+        headers={"WWW-Authenticate": 'Basic realm="whenever", charset="UTF-8"'},
         media_type="text/plain",
     )
 
@@ -367,7 +367,7 @@ def _query_events(ctx: DavContext, cal: Calendar, root: ET.Element) -> list[Even
 def _get(ctx: DavContext, parts: list[str], body: bytes) -> Response:
     head = ctx.request.method == "HEAD"
     if not parts:
-        return Response(b"" if head else b"sharedcal calendar home\n", media_type="text/plain")
+        return Response(b"" if head else b"whenever calendar home\n", media_type="text/plain")
     m, cal = _membership(ctx, parts[0])
     if len(parts) == 1:
         events = list(ctx.db.scalars(select(Event).where(Event.calendar_id == cal.id)))

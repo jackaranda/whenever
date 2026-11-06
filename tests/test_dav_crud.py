@@ -25,7 +25,7 @@ def test_create_get_and_creator_annotation(client, seed):
     assert r.headers["content-type"].startswith("text/calendar")
     ev = Calendar.from_ical(r.content).walk("VEVENT")[0]
     assert str(ev["DESCRIPTION"]).endswith("— Created by Bob")
-    assert str(ev["X-SHAREDCAL-OWNER"]) == "bob"
+    assert str(ev["X-WHENEVER-OWNER"]) == "bob"
 
 
 def test_update_with_etag(client, seed):
@@ -129,7 +129,7 @@ def test_sync_collection(client, seed):
     # nothing changed since the new token
     assert ET.fromstring(_sync(client, new_token).content).findall("D:response", NS) == []
 
-    r = _sync(client, "urn:sharedcal:sync:999:1")
+    r = _sync(client, "urn:whenever:sync:999:1")
     assert r.status_code == 403 and b"valid-sync-token" in r.content
 
 

@@ -53,7 +53,7 @@ def test_discovery_chain(client, seed):
 
 def test_readonly_member_privileges(client, seed):
     with client.app.state.sessionmaker() as db:
-        from sharedcal.models import User
+        from whenever.models import User
         token = db.get(User, seed.carol.id).token
     r = client.request("PROPFIND", f"/dav/t/{token}/team/", headers={"Depth": "0"}, content=CALS_BODY)
     privs = [p[0].tag for p in ET.fromstring(r.content).findall(".//D:current-user-privilege-set/D:privilege", NS)]

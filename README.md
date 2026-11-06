@@ -1,4 +1,4 @@
-# sharedcal
+# whenever
 
 Shared calendars that several people use from their own calendar apps. Each person can read every event and add their own, and each event shows who created it.
 
@@ -13,11 +13,11 @@ FastAPI + SQLAlchemy + SQLite. No external services.
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -e '.[test]'
-.venv/bin/python -m sharedcal create-admin admin --display-name "Admin"
-.venv/bin/python -m sharedcal serve            # http://127.0.0.1:8000/admin/
+.venv/bin/python -m whenever create-admin admin --display-name "Admin"
+.venv/bin/python -m whenever serve            # http://127.0.0.1:8000/admin/
 ```
 
-Or run it with uvicorn directly: `uvicorn sharedcal.main:create_app --factory`.
+Or run it with uvicorn directly: `uvicorn whenever.main:create_app --factory`.
 
 Run the tests with `.venv/bin/pytest`.
 
@@ -28,7 +28,7 @@ Run the tests with `.venv/bin/pytest`.
 3. Any member can read every event. Only the event's creator, or an admin, can change or delete it. Clients see other people's events as read-only through `current-user-privilege-set`; if they try to write anyway, the server rejects it with 403.
 4. The creator's name is added to every event when it is served:
    - as `DESCRIPTION` "— Created by Alice", which every client displays
-   - as `X-SHAREDCAL-OWNER` / `X-SHAREDCAL-OWNER-NAME`
+   - as `X-WHENEVER-OWNER` / `X-WHENEVER-OWNER-NAME`
    - optionally as a `[Alice]` title prefix (a per-calendar setting)
 
    These additions are removed again when a client saves the event back, so they don't pile up.
@@ -55,19 +55,19 @@ Run the tests with `.venv/bin/pytest`.
 
 | Variable | Default | |
 |---|---|---|
-| `SHAREDCAL_DATA_DIR` | `./data` | Holds the SQLite database and a generated session secret |
-| `SHAREDCAL_DATABASE_URL` | `sqlite:///{data_dir}/sharedcal.db` | Any SQLAlchemy URL |
-| `SHAREDCAL_SECRET_KEY` | generated | Signs the admin session cookie |
-| `SHAREDCAL_BASE_URL` | request URL | Public URL used in the connection details the admin UI shows |
-| `SHAREDCAL_ALLOW_TOKEN_URLS` | `true` | Set to `false` to require Basic auth for CalDAV |
-| `SHAREDCAL_COOKIE_SECURE` | `false` | Set to `true` behind HTTPS |
-| `SHAREDCAL_MAX_EVENT_SIZE` | `262144` | Largest accepted event, in bytes |
-| `SHAREDCAL_FEED_REFRESH_MINUTES` | `15` | Refresh interval suggested in ICS feeds |
+| `WHENEVER_DATA_DIR` | `./data` | Holds the SQLite database and a generated session secret |
+| `WHENEVER_DATABASE_URL` | `sqlite:///{data_dir}/whenever.db` | Any SQLAlchemy URL |
+| `WHENEVER_SECRET_KEY` | generated | Signs the admin session cookie |
+| `WHENEVER_BASE_URL` | request URL | Public URL used in the connection details the admin UI shows |
+| `WHENEVER_ALLOW_TOKEN_URLS` | `true` | Set to `false` to require Basic auth for CalDAV |
+| `WHENEVER_COOKIE_SECURE` | `false` | Set to `true` behind HTTPS |
+| `WHENEVER_MAX_EVENT_SIZE` | `262144` | Largest accepted event, in bytes |
+| `WHENEVER_FEED_REFRESH_MINUTES` | `15` | Refresh interval suggested in ICS feeds |
 
 ## Layout
 
 ```
-sharedcal/
+whenever/
   main.py         app factory
   config.py       settings
   models.py       User, Calendar, Membership, Event, EventTombstone
@@ -96,48 +96,48 @@ Not supported:
 
 ## Deploying behind nginx
 
-The setup below runs sharedcal on `127.0.0.1:8000` under systemd, with nginx in front handling TLS on its own hostname (here `cal.example.org`).
+The setup below runs the `whenever` app on `127.0.0.1:8000` under systemd, with nginx in front handling TLS on its own hostname (here `cal.example.org`).
 
 Serve it from the root of its own hostname, not a sub-path such as `/calendar/`. Calendar clients look for `/.well-known/caldav` at the root of the host, and some also send PROPFIND to `/`.
 
 ### 1. Install the app
 
 ```bash
-sudo useradd --system --home /opt/sharedcal --shell /usr/sbin/nologin sharedcal
-sudo mkdir -p /opt/sharedcal /var/lib/sharedcal
-sudo chown sharedcal: /opt/sharedcal /var/lib/sharedcal
-sudo -u sharedcal git clone <your repo> /opt/sharedcal/app   # or copy the files
-sudo -u sharedcal python3 -m venv /opt/sharedcal/venv
-sudo -u sharedcal /opt/sharedcal/venv/bin/pip install /opt/sharedcal/app
-sudo -u sharedcal SHAREDCAL_DATA_DIR=/var/lib/sharedcal \
-    /opt/sharedcal/venv/bin/python -m sharedcal create-admin admin
+sudo useradd --system --home /opt/whenever --shell /usr/sbin/nologin whenever
+sudo mkdir -p /opt/whenever /var/lib/whenever
+sudo chown whenever: /opt/whenever /var/lib/whenever
+sudo -u whenever git clone <your repo> /opt/whenever/app   # or copy the files
+sudo -u whenever python3 -m venv /opt/whenever/venv
+sudo -u whenever /opt/whenever/venv/bin/pip install /opt/whenever/app
+sudo -u whenever WHENEVER_DATA_DIR=/var/lib/whenever \
+    /opt/whenever/venv/bin/python -m whenever create-admin admin
 ```
 
 ### 2. Run it with systemd
 
-Create `/etc/systemd/system/sharedcal.service`:
+Create `/etc/systemd/system/whenever.service`:
 
 ```ini
 [Unit]
-Description=sharedcal
+Description=whenever
 After=network.target
 
 [Service]
-User=sharedcal
-Group=sharedcal
-Environment=SHAREDCAL_DATA_DIR=/var/lib/sharedcal
-Environment=SHAREDCAL_BASE_URL=https://cal.example.org
-Environment=SHAREDCAL_COOKIE_SECURE=true
+User=whenever
+Group=whenever
+Environment=WHENEVER_DATA_DIR=/var/lib/whenever
+Environment=WHENEVER_BASE_URL=https://cal.example.org
+Environment=WHENEVER_COOKIE_SECURE=true
 # --proxy-headers and --forwarded-allow-ips make uvicorn trust nginx's X-Forwarded-* headers.
 # --no-access-log keeps tokens out of the app's logs; nginx logs requests instead (see below).
-ExecStart=/opt/sharedcal/venv/bin/uvicorn sharedcal.main:create_app --factory \
+ExecStart=/opt/whenever/venv/bin/uvicorn whenever.main:create_app --factory \
     --host 127.0.0.1 --port 8000 --workers 1 \
     --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log
 Restart=on-failure
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/sharedcal
+ReadWritePaths=/var/lib/whenever
 PrivateTmp=true
 
 [Install]
@@ -146,7 +146,7 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now sharedcal
+sudo systemctl enable --now whenever
 ```
 
 Keep `--workers 1` while using SQLite.
@@ -155,20 +155,20 @@ Keep `--workers 1` while using SQLite.
 
 nginx proxies every HTTP method by default, including the WebDAV ones (`PROPFIND`, `REPORT`, `PROPPATCH`). Don't enable nginx's own `dav_methods` module, and don't add `limit_except` blocks, on these locations.
 
-Create `/etc/nginx/sites-available/sharedcal` and link it into `sites-enabled`:
+Create `/etc/nginx/sites-available/whenever` and link it into `sites-enabled`:
 
 ```nginx
 # Replace the token in /dav/t/<token>/ and /feed/<token>/ paths with *** in the access log.
-map $request_uri $sharedcal_log_uri {
+map $request_uri $whenever_log_uri {
     "~^(?<pre>/(?:dav/t|feed)/)[^/?]+(?<post>.*)$"  "${pre}***${post}";
     default                                         $request_uri;
 }
-log_format sharedcal '$remote_addr - $remote_user [$time_local] '
-                     '"$request_method $sharedcal_log_uri $server_protocol" '
+log_format whenever '$remote_addr - $remote_user [$time_local] '
+                     '"$request_method $whenever_log_uri $server_protocol" '
                      '$status $body_bytes_sent "$http_user_agent"';
 
 # Rate limit the admin login form, to slow down password guessing.
-limit_req_zone $binary_remote_addr zone=sharedcal_login:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=whenever_login:10m rate=10r/m;
 
 server {
     listen 80;
@@ -186,9 +186,9 @@ server {
     ssl_certificate     /etc/letsencrypt/live/cal.example.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/cal.example.org/privkey.pem;
 
-    access_log /var/log/nginx/sharedcal.access.log sharedcal;
+    access_log /var/log/nginx/whenever.access.log whenever;
 
-    # Must be at least SHAREDCAL_MAX_EVENT_SIZE (256 KB by default).
+    # Must be at least WHENEVER_MAX_EVENT_SIZE (256 KB by default).
     client_max_body_size 1m;
 
     proxy_http_version 1.1;
@@ -198,7 +198,7 @@ server {
     proxy_read_timeout 60s;
 
     location = /admin/login {
-        limit_req zone=sharedcal_login burst=5 nodelay;
+        limit_req zone=whenever_login burst=5 nodelay;
         proxy_pass http://127.0.0.1:8000;
     }
 
@@ -209,7 +209,7 @@ server {
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/sharedcal /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/whenever /etc/nginx/sites-enabled/
 sudo certbot --nginx -d cal.example.org     # if you don't have a certificate yet
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -235,10 +235,10 @@ Then open `https://cal.example.org/admin/`, log in, and use a user's connection 
 
 ## Deployment and things to think about
 
-- **Use HTTPS.** Tokens and Basic-auth passwords are as good as passwords. See [Deploying behind nginx](#deploying-behind-nginx), and set `SHAREDCAL_COOKIE_SECURE=true`.
+- **Use HTTPS.** Tokens and Basic-auth passwords are as good as passwords. See [Deploying behind nginx](#deploying-behind-nginx), and set `WHENEVER_COOKIE_SECURE=true`.
 - **Tokens appear in access logs** unless you remove them. The nginx config above writes them to its log as `***` and turns off uvicorn's access log. If a URL leaks anyway, rotate the token from the user's admin page.
-- **Run a single process.** A SQLite file with one uvicorn worker is enough for small teams. For more, point `SHAREDCAL_DATABASE_URL` at PostgreSQL.
-- **Back up the database** with `sqlite3 data/sharedcal.db ".backup backup.db"`, which is safe with WAL. Keep `data/secret_key` too.
+- **Run a single process.** A SQLite file with one uvicorn worker is enough for small teams. For more, point `WHENEVER_DATABASE_URL` at PostgreSQL.
+- **Back up the database** with `sqlite3 data/whenever.db ".backup backup.db"`, which is safe with WAL. Keep `data/secret_key` too.
 - **Reminders (VALARM) are shared.** An alarm set by the creator is stored in the event, so every member gets it. Stripping VALARMs on save is a possible addition.
 - **Invitations:** `ORGANIZER`/`ATTENDEE` are stored, but no emails or iTIP scheduling messages are sent.
 - **Admin login has no rate limiting.** Put the proxy's rate limiting or fail2ban in front of `/admin/login` and the DAV endpoints.

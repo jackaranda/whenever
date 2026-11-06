@@ -8,9 +8,9 @@ from datetime import UTC, date, datetime, timedelta
 
 from icalendar import Calendar as ICalendar
 
-PRODID = "-//sharedcal//sharedcal 0.1//EN"
-OWNER_PROP = "X-SHAREDCAL-OWNER"
-OWNER_NAME_PROP = "X-SHAREDCAL-OWNER-NAME"
+PRODID = "-//whenever//whenever 0.1//EN"
+OWNER_PROP = "X-WHENEVER-OWNER"
+OWNER_NAME_PROP = "X-WHENEVER-OWNER-NAME"
 MARKER = "— Created by "  # "— Created by "
 _MARKER_RE = re.compile(r"\s*" + re.escape(MARKER) + r"([^\n]*?)\s*\Z")
 _ALLOWED_COMPONENTS = {"VEVENT", "VTIMEZONE"}

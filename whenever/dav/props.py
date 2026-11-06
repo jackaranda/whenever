@@ -73,11 +73,11 @@ class DavContext:
 
 
 def sync_token(cal: Calendar) -> str:
-    return f"urn:sharedcal:sync:{cal.id}:{cal.sync_seq}"
+    return f"urn:whenever:sync:{cal.id}:{cal.sync_seq}"
 
 
 def parse_sync_token(token: str, cal: Calendar) -> int | None:
-    prefix = f"urn:sharedcal:sync:{cal.id}:"
+    prefix = f"urn:whenever:sync:{cal.id}:"
     if not token.startswith(prefix):
         return None
     try:

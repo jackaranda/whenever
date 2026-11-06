@@ -1,4 +1,4 @@
-"""Command line: python -m sharedcal {serve,init-db,create-admin}"""
+"""Command line: python -m whenever {serve,init-db,create-admin}"""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def serve(args) -> int:
     import uvicorn
 
     uvicorn.run(
-        "sharedcal.main:create_app",
+        "whenever.main:create_app",
         factory=True,
         host=args.host,
         port=args.port,
@@ -73,7 +73,7 @@ def serve(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m sharedcal")
+    parser = argparse.ArgumentParser(prog="python -m whenever")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("serve", help="run the server")
