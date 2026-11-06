@@ -58,7 +58,8 @@ Run the tests with `.venv/bin/pytest`.
 | `WHENEVER_DATA_DIR` | `./data` | Holds the SQLite database and a generated session secret |
 | `WHENEVER_DATABASE_URL` | `sqlite:///{data_dir}/whenever.db` | Any SQLAlchemy URL |
 | `WHENEVER_SECRET_KEY` | generated | Signs the admin session cookie |
-| `WHENEVER_BASE_URL` | request URL | Public URL used in the connection details the admin UI shows |
+| `WHENEVER_BASE_URL` | request URL | Public URL used in the connection details the admin UI shows; include any sub-path |
+| `WHENEVER_ROOT_PATH` | empty | URL prefix when served from a sub-path, e.g. `/whenever` |
 | `WHENEVER_ALLOW_TOKEN_URLS` | `true` | Set to `false` to require Basic auth for CalDAV |
 | `WHENEVER_COOKIE_SECURE` | `false` | Set to `true` behind HTTPS |
 | `WHENEVER_MAX_EVENT_SIZE` | `262144` | Largest accepted event, in bytes |
@@ -98,7 +99,7 @@ Not supported:
 
 The setup below runs the `whenever` app on `127.0.0.1:8000` under systemd, with nginx in front handling TLS on its own hostname (here `cal.example.org`).
 
-Serve it from the root of its own hostname, not a sub-path such as `/calendar/`. Calendar clients look for `/.well-known/caldav` at the root of the host, and some also send PROPFIND to `/`.
+Serving it from the root of its own hostname is simplest. To share a hostname with other sites, see [Serving from a sub-path](#serving-from-a-sub-path) after these steps.
 
 ### 1. Install the app
 
@@ -232,6 +233,102 @@ curl -s -X PROPFIND -H 'Depth: 0' -u admin https://cal.example.org/dav/ | head -
 ```
 
 Then open `https://cal.example.org/admin/`, log in, and use a user's connection page to set up a real client.
+
+### Serving from a sub-path
+
+This variant runs the app at `https://example.com/whenever/` inside a server block that already serves other sites on that hostname.
+
+nginx passes request paths through **unchanged** (`/whenever/dav/...`), and `WHENEVER_ROOT_PATH` tells the app its prefix. The app then removes the prefix before routing, adds it back to every URL it generates, and limits its session cookie to `/whenever/`. Don't strip the prefix in nginx (`proxy_pass http://127.0.0.1:8000/;`), and don't use uvicorn's `--root-path`: nginx normalises paths when it rewrites them, and that can break event resource names.
+
+**systemd:** follow step 2 above, but use these environment lines:
+
+```ini
+Environment=WHENEVER_DATA_DIR=/var/lib/whenever
+Environment=WHENEVER_ROOT_PATH=/whenever
+Environment=WHENEVER_BASE_URL=https://example.com/whenever
+Environment=WHENEVER_COOKIE_SECURE=true
+```
+
+**nginx, http level:** create `/etc/nginx/conf.d/whenever.conf`. Debian and Ubuntu include `conf.d/*.conf` inside the `http { }` block.
+
+```nginx
+# Replace the token in /whenever/dav/t/<token>/ and /whenever/feed/<token>/ with *** in the access log.
+map $request_uri $whenever_log_uri {
+    "~^(?<pre>/whenever/(?:dav/t|feed)/)[^/?]+(?<post>.*)$"  "${pre}***${post}";
+    default                                                  $request_uri;
+}
+log_format whenever '$remote_addr - $remote_user [$time_local] '
+                    '"$request_method $whenever_log_uri $server_protocol" '
+                    '$status $body_bytes_sent "$http_user_agent"';
+
+limit_req_zone $binary_remote_addr zone=whenever_login:10m rate=10r/m;
+```
+
+**nginx, server level:** create `/etc/nginx/snippets/whenever.conf`:
+
+```nginx
+# Lets clients that are given only the hostname find the CalDAV service.
+location = /.well-known/caldav {
+    return 301 /whenever/dav/;
+}
+
+location = /whenever {
+    return 301 /whenever/;
+}
+
+# ^~ stops the server's regex locations (PHP, static files, etc.) from capturing these URLs.
+location ^~ /whenever/ {
+    access_log /var/log/nginx/whenever.access.log whenever;
+
+    # Must be at least WHENEVER_MAX_EVENT_SIZE (256 KB by default).
+    client_max_body_size 1m;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+
+    # No path after the port: the request path is passed through unchanged.
+    proxy_pass http://127.0.0.1:8000;
+
+    location = /whenever/admin/login {
+        limit_req zone=whenever_login burst=5 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+```
+
+Include the snippet in the existing HTTPS server block for `example.com`, then reload nginx:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name example.com;
+    # ... existing configuration ...
+    include snippets/whenever.conf;
+}
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Notes:
+
+- **Only one CalDAV service per hostname** can own `/.well-known/caldav`. If something else on this host already uses it, leave that location out. Users then need the full URL `https://example.com/whenever/` in their clients instead of just the hostname.
+- **Cookies:** the app's session cookie is limited to `/whenever/`, but all sites on the hostname still share one browser origin. Scripts served by the other sites on the same hostname can reach this app, so only use a sub-path on a host whose other sites you trust. Otherwise use a dedicated hostname.
+- **Clients:** Apple Calendar and DAVx5 can be given just `example.com` (using the well-known redirect), or `https://example.com/whenever/`. The token and feed URLs on each user's admin page already include `/whenever`.
+
+Check it:
+
+```bash
+# should print 301 with "Location: https://example.com/whenever/dav/"
+curl -si -X PROPFIND https://example.com/.well-known/caldav | grep -iE '^(HTTP|location)'
+
+# should print 207, with hrefs starting /whenever/dav/u/admin/
+curl -s -X PROPFIND -H 'Depth: 0' -u admin https://example.com/whenever/dav/ | head -c 400; echo
+```
 
 ## Deployment and things to think about
 

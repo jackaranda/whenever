@@ -16,6 +16,30 @@ from .feeds import router as feed_router
 from .models import Base
 
 
+class RootPathMiddleware:
+    """Serve the app under a URL prefix (WHENEVER_ROOT_PATH).
+
+    The reverse proxy passes paths through unchanged (/whenever/dav/...). This
+    sets the ASGI root_path, so routing ignores the prefix and every URL the
+    app generates includes it. Requests that arrive without the prefix (e.g.
+    straight to the app port) are treated as if they had it, which is what
+    uvicorn's --root-path does.
+    """
+
+    def __init__(self, app, prefix: str):
+        self.app = app
+        self.prefix = prefix
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in {"http", "websocket"} and not scope.get("root_path"):
+            path = scope["path"]
+            if path != self.prefix and not path.startswith(self.prefix + "/"):
+                path = self.prefix + path
+                scope = {**scope, "raw_path": self.prefix.encode() + scope.get("raw_path", b"")}
+            scope = {**scope, "root_path": self.prefix, "path": path}
+        await self.app(scope, receive, send)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     engine = make_engine(settings.database_url)
@@ -33,7 +57,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         max_age=8 * 3600,
         same_site="strict",
         https_only=settings.cookie_secure,
+        path=f"{settings.root_path}/",
     )
+    if settings.root_path:
+        app.add_middleware(RootPathMiddleware, prefix=settings.root_path)
     app.add_exception_handler(LoginRequired, login_required_handler)
 
     app.include_router(dav_router)
@@ -44,7 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def root(request: Request) -> Response:
         # Some clients PROPFIND the server root when given only a hostname.
         if request.method in {"GET", "HEAD"}:
-            return RedirectResponse("/admin/", status_code=303)
+            return RedirectResponse(request.url_for("users"), status_code=303)
         return await dav_root(request)
 
     return app
