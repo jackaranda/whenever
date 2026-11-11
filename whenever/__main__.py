@@ -10,18 +10,18 @@ from sqlalchemy import select
 
 from .admin.routes import USERNAME_RE
 from .config import Settings
-from .db import make_engine, make_sessionmaker
-from .models import Base, User
+from .db import init_db, make_engine, make_sessionmaker
+from .models import User
 from .security import hash_password
 
 
 def _sessionmaker():
     engine = make_engine(Settings.from_env().database_url)
-    Base.metadata.create_all(engine)
+    init_db(engine)
     return make_sessionmaker(engine)
 
 
-def init_db(_args) -> int:
+def cmd_init_db(_args) -> int:
     _sessionmaker()
     print("Database ready.")
     return 0
@@ -83,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=serve)
 
     p = sub.add_parser("init-db", help="create the database tables")
-    p.set_defaults(func=init_db)
+    p.set_defaults(func=cmd_init_db)
 
     p = sub.add_parser("create-admin", help="create an admin user, or reset an existing user's password and make them admin")
     p.add_argument("username")

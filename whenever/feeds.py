@@ -1,4 +1,8 @@
-"""Read-only ICS subscription feeds: /feed/{token}/{slug}.ics"""
+"""Read-only ICS subscription feeds.
+
+    /feed/{user token}/{slug}.ics    one calendar, for a member of it
+    /feed/c/{feed token}.ics         a calendar's shareable feed, for anyone with the link
+"""
 
 from __future__ import annotations
 
@@ -15,25 +19,13 @@ from .models import Calendar, Event, Membership, User
 router = APIRouter()
 
 
-@router.get("/feed/{token}/{slug}.ics")
-def feed(token: str, slug: str, request: Request, db: Session = Depends(get_db)) -> Response:
-    user = db.scalar(select(User).where(User.token == token))
-    if user is None or not user.active:
-        return Response(status_code=404)
-    cal = db.scalar(
-        select(Calendar)
-        .join(Membership, Membership.calendar_id == Calendar.id)
-        .where(Membership.user_id == user.id, Calendar.slug == slug)
-    )
-    if cal is None:
-        return Response(status_code=404)
-
+def _calendar_feed(request: Request, db: Session, cal: Calendar) -> Response:
     # The feed changes whenever an event changes (sync_seq), or when calendar
     # settings that appear in the feed change.
     etag = hashlib.sha256(
         f"{cal.id}:{cal.sync_seq}:{cal.name}:{cal.description}:{cal.timezone}:{cal.prefix_titles}".encode()
     ).hexdigest()[:32]
-    headers = {"ETag": f'"{etag}"', "Cache-Control": "private, max-age=60"}
+    headers = {"ETag": f'"{etag}"', "Cache-Control": "private, max-age=60", "X-Robots-Tag": "noindex"}
     if request.headers.get("if-none-match", "").strip('" ') == etag:
         return Response(status_code=304, headers=headers)
 
@@ -47,3 +39,27 @@ def feed(token: str, slug: str, request: Request, db: Session = Depends(get_db))
     )
     headers["Content-Disposition"] = f'inline; filename="{cal.slug}.ics"'
     return Response(data, media_type="text/calendar; charset=utf-8", headers=headers)
+
+
+# Registered before the per-user route, which would otherwise match /feed/c/... too.
+@router.get("/feed/c/{feed_token}.ics", name="shared_feed")
+def shared_feed(feed_token: str, request: Request, db: Session = Depends(get_db)) -> Response:
+    cal = db.scalar(select(Calendar).where(Calendar.feed_token == feed_token)) if feed_token else None
+    if cal is None:
+        return Response(status_code=404)
+    return _calendar_feed(request, db, cal)
+
+
+@router.get("/feed/{token}/{slug}.ics", name="member_feed")
+def member_feed(token: str, slug: str, request: Request, db: Session = Depends(get_db)) -> Response:
+    user = db.scalar(select(User).where(User.token == token))
+    if user is None or not user.active:
+        return Response(status_code=404)
+    cal = db.scalar(
+        select(Calendar)
+        .join(Membership, Membership.calendar_id == Calendar.id)
+        .where(Membership.user_id == user.id, Calendar.slug == slug)
+    )
+    if cal is None:
+        return Response(status_code=404)
+    return _calendar_feed(request, db, cal)

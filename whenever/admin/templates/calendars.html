@@ -8,7 +8,7 @@
   <tbody>
   {% for cal in calendars %}
     <tr>
-      <td><span class="swatch" style="background: {{ cal.color }}"></span><a href="{{ url_for('calendar_detail', calendar_id=cal.id) }}">{{ cal.name }}</a></td>
+      <td><span class="swatch" style="background: {{ cal.color }}"></span><a href="{{ url_for('calendar_detail', calendar_id=cal.id) }}">{{ cal.name }}</a>{% if cal.feed_token %}<span class="badge">shared feed</span>{% endif %}</td>
       <td><code>{{ cal.slug }}</code></td>
       <td>{{ member_counts.get(cal.id, 0) }}</td>
       <td>{{ event_counts.get(cal.id, 0) }}</td>

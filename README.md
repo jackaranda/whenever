@@ -42,9 +42,14 @@ Run the tests with `.venv/bin/pytest`.
 | CalDAV without credentials | `https://host/dav/t/{token}/` (or `…/{token}/{calendar}/`) | token in the path |
 | Read-only subscription | `https://host/feed/{token}/{calendar}.ics` | token in the path |
 | Web calendar | `https://host/cal/{token}/` | token in the path |
+| Shareable calendar feed (optional, per calendar) | `https://host/feed/c/{calendar feed token}.ics` | none: anyone with the link |
 | Admin | `https://host/admin/` | admin username + password |
 
 `/.well-known/caldav` redirects to `/dav/`, so clients that discover the server automatically (Apple, DAVx5) only need the hostname.
+
+### Shareable calendar feeds
+
+Each calendar can also have a read-only feed link that isn't tied to any user, for people without an account (e.g. published on a website or sent by email). It's off by default; turn it on, replace the link, or turn it off again under **Shareable feed** on the calendar's admin page. The feed shows every event in the calendar, including the "Created by" names, so only turn it on for calendars you're happy to share.
 
 ### Client notes
 
@@ -177,9 +182,9 @@ nginx proxies every HTTP method by default, including the WebDAV ones (`PROPFIND
 Create `/etc/nginx/sites-available/whenever` and link it into `sites-enabled`:
 
 ```nginx
-# Replace the token in /dav/t/<token>/ and /feed/<token>/ paths with *** in the access log.
+# Replace the token in /dav/t/<token>/, /feed/<token>/, /feed/c/<token>.ics and /cal/<token>/ with *** in the access log.
 map $request_uri $whenever_log_uri {
-    "~^(?<pre>/(?:dav/t|feed)/)[^/?]+(?<post>.*)$"  "${pre}***${post}";
+    "~^(?<pre>/(?:dav/t|feed/c|feed|cal)/)[^/?]+(?<post>.*)$"  "${pre}***${post}";
     default                                         $request_uri;
 }
 log_format whenever '$remote_addr - $remote_user [$time_local] '
@@ -270,9 +275,9 @@ Environment=WHENEVER_COOKIE_SECURE=true
 **nginx, http level:** create `/etc/nginx/conf.d/whenever.conf`. Debian and Ubuntu include `conf.d/*.conf` inside the `http { }` block.
 
 ```nginx
-# Replace the token in /whenever/dav/t/<token>/ and /whenever/feed/<token>/ with *** in the access log.
+# Replace the token in /whenever/dav/t/, /whenever/feed/, /whenever/feed/c/ and /whenever/cal/ URLs with *** in the access log.
 map $request_uri $whenever_log_uri {
-    "~^(?<pre>/whenever/(?:dav/t|feed)/)[^/?]+(?<post>.*)$"  "${pre}***${post}";
+    "~^(?<pre>/whenever/(?:dav/t|feed/c|feed|cal)/)[^/?]+(?<post>.*)$"  "${pre}***${post}";
     default                                                  $request_uri;
 }
 log_format whenever '$remote_addr - $remote_user [$time_local] '

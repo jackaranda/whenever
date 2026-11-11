@@ -14,9 +14,8 @@ from .admin.routes import router as admin_router
 from .config import Settings
 from .dav.routes import DAV_METHODS, dav_root
 from .dav.routes import router as dav_router
-from .db import make_engine, make_sessionmaker
+from .db import init_db, make_engine, make_sessionmaker
 from .feeds import router as feed_router
-from .models import Base
 from .web.routes import router as web_router
 
 
@@ -50,7 +49,7 @@ class RootPathMiddleware:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     engine = make_engine(settings.database_url)
-    Base.metadata.create_all(engine)
+    init_db(engine)
 
     app = FastAPI(title="whenever", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings

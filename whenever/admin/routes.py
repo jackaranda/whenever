@@ -396,7 +396,7 @@ def calendar_detail(
     event_count = db.scalar(select(func.count(Event.id)).where(Event.calendar_id == cal.id))
     return render(
         request, "calendar_detail.html", admin, cal=cal, members=members,
-        event_count=event_count, timezones=timezone_names(),
+        event_count=event_count, timezones=timezone_names(), base=public_base(request),
     )
 
 
@@ -429,6 +429,31 @@ def update_calendar(
         store.refresh_events(db, list(cal.events))
     db.commit()
     flash(request, "Saved.")
+    return redirect(request, "calendar_detail", calendar_id=cal.id)
+
+
+@router.post("/calendars/{calendar_id}/feed", dependencies=[Depends(check_csrf)])
+def calendar_feed_link(
+    request: Request,
+    calendar_id: int,
+    action: str = Form(...),
+    admin: User = Depends(current_admin),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Turn the calendar's shareable read-only feed on or off, or replace its link."""
+    cal = _get_calendar(db, calendar_id)
+    if action == "enable":
+        cal.feed_token = cal.feed_token or new_token()
+        flash(request, "Shareable feed turned on. Anyone with the link can see this calendar's events.")
+    elif action == "rotate":
+        cal.feed_token = new_token()
+        flash(request, "New feed link issued. The old link no longer works.")
+    elif action == "disable":
+        cal.feed_token = None
+        flash(request, "Shareable feed turned off. The link no longer works.")
+    else:
+        raise HTTPException(status_code=400, detail="Unknown action")
+    db.commit()
     return redirect(request, "calendar_detail", calendar_id=cal.id)
 
 

@@ -16,6 +16,32 @@
   <p><a href="{{ url_for('memberships') }}">Edit memberships</a></p>
 </section>
 
+<h2>Shareable feed</h2>
+<section class="card">
+  {% if cal.feed_token %}
+  <p>Anyone with this link can subscribe to the calendar read-only, without an account. It shows every event,
+    including who created it.</p>
+  <dl class="urls">
+    <dt>Subscription URL</dt>
+    <dd><span class="url">{{ base }}/feed/c/{{ cal.feed_token }}.ics</span></dd>
+    <dt>Open in a calendar app</dt>
+    <dd><span class="url">{{ base | replace("https://", "webcal://", 1) | replace("http://", "webcal://", 1) }}/feed/c/{{ cal.feed_token }}.ics</span></dd>
+  </dl>
+  <form method="post" action="{{ url_for('calendar_feed_link', calendar_id=cal.id) }}" style="display:inline">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="secondary" name="action" value="rotate">Issue new link (the old one stops working)</button>
+    <button class="danger" name="action" value="disable">Turn off</button>
+  </form>
+  {% else %}
+  <p class="muted">Off. Turn it on to get a read-only subscription link you can give to people who don't have
+    an account, e.g. on a website or in an email. Members have their own links on their user pages.</p>
+  <form method="post" action="{{ url_for('calendar_feed_link', calendar_id=cal.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button name="action" value="enable">Turn on shareable feed</button>
+  </form>
+  {% endif %}
+</section>
+
 <h2>Settings</h2>
 <section class="card">
   <form method="post" action="{{ url_for('update_calendar', calendar_id=cal.id) }}">

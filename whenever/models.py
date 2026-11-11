@@ -45,6 +45,8 @@ class Calendar(Base):
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     # Prefix event titles with "[Creator]" when serving them.
     prefix_titles: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Secret for the shareable read-only feed at /feed/c/{feed_token}.ics; None while it's turned off.
+    feed_token: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)
     # Goes up by one on every change to the calendar's events; used for the ctag and sync-token.
     sync_seq: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
